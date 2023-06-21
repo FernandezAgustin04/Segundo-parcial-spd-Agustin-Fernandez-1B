@@ -1,0 +1,178 @@
+#include <LiquidCrystal.h>
+#include <Servo.h>
+#include <IRremote.h>
+
+// Definición de pines
+#define TEMPERATURE_PIN A0
+#define RS_PIN 12
+#define EN_PIN 13
+#define D4_PIN 5
+#define D5_PIN 4
+#define D6_PIN 3
+#define D7_PIN 2
+#define SERVO_PIN 9
+#define LED_PIN1 6
+#define LED_PIN2 7
+#define POWER_BUTTON_PIN 10
+#define IR_PIN 11
+
+// Constantes
+const int TEMPERATURA_LIMIE = 60;
+const int VERANO_TEMP_LIMITE = 25;
+const int INVIERNO_TEMP_LIMITE = 10;
+const int OTONO_TEMP_LIMITE = 13;
+const int PRIMAVERA_TEMP_LIMITE = 16;
+
+// Variables globales
+int temperatura = 0;
+int estacion = 0;
+boolean systemActive = false;
+boolean deteccion_fuego = false;
+boolean lcdActive = true;
+Servo servo;
+LiquidCrystal lcd(RS_PIN, EN_PIN, D4_PIN, D5_PIN, D6_PIN, D7_PIN);
+boolean estado_led1 = false;
+boolean estado_led2 = false;
+boolean power_button_presionado = false;
+IRrecv irReceiver(IR_PIN);
+decode_results irResults;
+int temperaturaAnterior = 0;
+
+void setup()
+{
+    lcd.begin(16, 2);
+
+    pinMode(LED_PIN1, OUTPUT);
+    pinMode(LED_PIN2, OUTPUT);
+
+    irReceiver.enableIRIn();
+
+    lcd.setCursor(0, 0);
+    lcd.print("Temp: ");
+    lcd.setCursor(0, 1);
+    lcd.print("Season: ");
+
+    Serial.begin(9600);
+
+    servo.attach(SERVO_PIN); // Agregar esta línea para adjuntar el servo al pin correspondiente
+}
+
+void loop()
+{
+    int sensorValue = analogRead(TEMPERATURE_PIN);
+    temperatura = map(sensorValue, 0, 1023, -29, 450);
+
+    if (temperatura != temperaturaAnterior)
+    {
+        lcd.clear();
+        lcd.setCursor(6, 0);
+        lcd.print("     ");
+        lcd.setCursor(6, 0);
+        lcd.print(temperatura);
+        lcd.print("C");
+        lcd.setCursor(7, 2);
+
+        if (lcdActive)
+        {
+            if (temperatura >= VERANO_TEMP_LIMITE)
+            {
+                lcd.setCursor(0, 0);
+                lcd.print("Temp: ");
+                lcd.setCursor(0, 1);
+                lcd.print("Season: ");
+                lcd.setCursor(6, 0);
+                lcd.print("     ");
+                lcd.setCursor(6, 0);
+                lcd.print(temperatura);
+                lcd.print("C");
+                lcd.setCursor(7, 2);
+                lcd.print("Verano");
+            }
+            else if (temperatura < INVIERNO_TEMP_LIMITE)
+            {
+                lcd.setCursor(0, 0);
+                lcd.print("Temp: ");
+                lcd.setCursor(0, 1);
+                lcd.print("Season: ");
+                lcd.setCursor(6, 0);
+                lcd.print("     ");
+                lcd.setCursor(6, 0);
+                lcd.print(temperatura);
+                lcd.print("C");
+                lcd.setCursor(7, 2);
+                lcd.print("Invierno");
+            }
+            else if (temperatura >= OTONO_TEMP_LIMITE && temperatura < PRIMAVERA_TEMP_LIMITE)
+            {
+                lcd.setCursor(0, 0);
+                lcd.print("Temp: ");
+                lcd.setCursor(0, 1);
+                lcd.print("Season: ");
+                lcd.setCursor(6, 0);
+                lcd.print("     ");
+                lcd.setCursor(6, 0);
+                lcd.print(temperatura);
+                lcd.print("C");
+                lcd.setCursor(7, 2);
+                lcd.print("Otono");
+            }
+            else if (temperatura >= PRIMAVERA_TEMP_LIMITE && temperatura < VERANO_TEMP_LIMITE)
+            {
+                lcd.setCursor(0, 0);
+                lcd.print("Temp: ");
+                lcd.setCursor(0, 1);
+                lcd.print("Season: ");
+                lcd.setCursor(6, 0);
+                lcd.print("     ");
+                lcd.setCursor(6, 0);
+                lcd.print(temperatura);
+                lcd.print("C");
+                lcd.setCursor(7, 2);
+                lcd.print("Primavera");
+            }
+            else if (temperatura > TEMPERATURA_LIMIE)
+            {
+                lcd.print("INCENDIO");
+            }
+        }
+
+        temperaturaAnterior = temperatura;
+    }
+
+    if (temperatura > 60)
+    {
+        digitalWrite(LED_PIN1, HIGH);
+        digitalWrite(LED_PIN2, LOW);
+    }
+    else
+    {
+        digitalWrite(LED_PIN1, LOW);
+        digitalWrite(LED_PIN2, HIGH);
+    }
+
+    Serial.print("Temperatura: ");
+    Serial.print(temperatura);
+    Serial.println("C");
+
+
+    if (irReceiver.decode(&irResults))
+    {
+        switch (irResults.value)
+        {
+        case 0xFF00BF00:
+            lcdActive = !lcdActive;
+            if (lcdActive)
+            {
+                lcd.display();
+            }
+            else
+            {
+                lcd.noDisplay();
+            }
+            break;
+        }
+
+        irReceiver.resume();
+    }
+}
+

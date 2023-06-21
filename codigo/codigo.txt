@@ -74,7 +74,7 @@ void loop()
 
         if (lcdActive)
         {
-            if (temperatura >= VERANO_TEMP_LIMITE)
+            if (temperatura >= VERANO_TEMP_LIMITE && temperatura < 60)
             {
                 lcd.setCursor(0, 0);
                 lcd.print("Temp: ");
